@@ -1,0 +1,10 @@
+streamlit
+langgraph
+langchain-google-genai
+langchain-core
+pydantic
+python-dotenv
+sec-edgar-downloader
+beautifulsoup4
+rank-bm25
+rapidfuzz
