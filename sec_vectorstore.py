@@ -10,11 +10,9 @@ SEC_COMPANY_NAME = "BlueprintAI"
 SEC_EMAIL = "analyst@blueprintai.com"
 CACHE_DIR = "./sec_filings_cache"
 
-# In-memory document storage
 _DOCUMENT_STORE = {}
 
 def _is_xbrl_or_noise(line: str) -> bool:
-    """Filter out raw XBRL JSON tags, schema taxonomy entries, and filing manifests."""
     noise_patterns = [
         r'^\s*["\']?(?:terseLabel|label|documentation|role|auth_ref|xbrltype|nsuri)["\']?\s*:',
         r'^\s*["\']?[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+["\']?\s*:',
@@ -30,7 +28,6 @@ def _is_xbrl_or_noise(line: str) -> bool:
     return False
 
 def get_clean_filing_chunks(ticker: str) -> list[Document]:
-    """Downloads and segments the latest 10-K into clean, human-readable financial chunks."""
     ticker = ticker.upper()
     if ticker in _DOCUMENT_STORE:
         return _DOCUMENT_STORE[ticker]
@@ -39,7 +36,6 @@ def get_clean_filing_chunks(ticker: str) -> list[Document]:
     dl = Downloader(SEC_COMPANY_NAME, SEC_EMAIL, CACHE_DIR)
     dl.get("10-K", ticker, limit=1)
 
-    # Prefer actual HTML/HTM documents over SEC submission wrapper (.txt)
     htm_files = glob(os.path.join(CACHE_DIR, "sec-edgar-filings", ticker, "10-K", "*", "*.htm*"))
     txt_files = glob(os.path.join(CACHE_DIR, "sec-edgar-filings", ticker, "10-K", "*", "*.txt"))
     files = htm_files if htm_files else txt_files
@@ -51,20 +47,14 @@ def get_clean_filing_chunks(ticker: str) -> list[Document]:
         html = f.read()
 
     soup = BeautifulSoup(html, "html.parser")
-    
-    # Strip non-narrative tags, styles, scripts, and embedded XBRL/XML schema wrappers
     tags_to_remove = ["script", "style", "head", "noscript", "xbrl", "ix:header", "ix:hidden"]
     for tag in soup(tags_to_remove):
         tag.extract()
 
-    # Extract clean text sections
     text = soup.get_text(separator="\n")
     raw_lines = [line.strip() for line in text.splitlines() if line.strip()]
-    
-    # Filter out XBRL taxonomy tables, JSON chunks, and filing manifests
     lines = [line for line in raw_lines if not _is_xbrl_or_noise(line)]
     
-    # Bundle into chunks of roughly 1,500 characters with overlapping financial context
     chunks = []
     current_chunk = []
     current_len = 0
@@ -75,7 +65,6 @@ def get_clean_filing_chunks(ticker: str) -> list[Document]:
         if current_len >= 1500:
             content = "\n".join(current_chunk)
             chunks.append(Document(page_content=content, metadata={"source": f"{ticker} 10-K"}))
-            # 20% overlap
             current_chunk = current_chunk[-4:]
             current_len = sum(len(x) for x in current_chunk)
 
@@ -86,15 +75,10 @@ def get_clean_filing_chunks(ticker: str) -> list[Document]:
     _DOCUMENT_STORE[ticker] = chunks
     return chunks
 
-
 def query_sec_filing(ticker: str, query: str, k: int = 5) -> list[Document]:
-    """BM25 search that targets exact fiscal terms and statement line-items."""
     chunks = get_clean_filing_chunks(ticker)
-    
-    # Tokenize corpus for BM25
     corpus_tokens = [re.findall(r"\w+", doc.page_content.lower()) for doc in chunks]
     bm25 = BM25Okapi(corpus_tokens)
-    
     query_tokens = re.findall(r"\w+", query.lower())
     top_docs = bm25.get_top_n(query_tokens, chunks, n=k)
     return top_docs
