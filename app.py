@@ -163,8 +163,8 @@ def retrieve_node(state: GraphState):
     user_docs = query_sec_filing(ticker=company, query=query, k=4)
     
     # 2. Baseline anchor chunks: Always retrieve primary income statement data
-    core_query = "Consolidated Statements of Operations revenue gross profit operating income net income"
-    core_docs = query_sec_filing(ticker=company, query=core_query, k=3)
+    core_query = "Consolidated Statements of Operations Income total net sales revenue operating income net income"
+    core_docs = query_sec_filing(ticker=company, query=core_query, k=4)
     
     # 3. Deduplicate combined chunks preserving order
     combined_docs = []
