@@ -278,6 +278,7 @@ with col1:
         "Suggested Inquiries",
         [
             "Total net sales, net income, and gross margin",
+            "Revenue Recognition and Core Financial Performance",
             "Research and development (R&D) expenditures",
             "Operating cash flow and capital expenditures",
             "Segment revenue breakdown (Products vs Services)"
